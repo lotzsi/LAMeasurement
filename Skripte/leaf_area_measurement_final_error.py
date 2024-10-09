@@ -181,8 +181,8 @@ def calculate_leaf_area_in_images(folder_path, total_area_mm2, output_csv):
 
 
 ### USER INPUT
-path_dir_in = '/Users/simon/Documents/Master/Masterarbeit/aktuelles Thema/Bilder_Blätter_LAI/LitterTraps_240930/'
-path_dir_out = '/Users/simon/Documents/Master/Masterarbeit/aktuelles Thema/Bilder_Blätter_LAI/LitterTraps_240930_processed_2/'
+path_dir_in = 'Bilder_Blätter_LAI/LitterTraps_240930/'
+path_dir_out = 'Bilder_Blätter_LAI/LitterTraps_240930_processed_2'
 
 # horizontal and vertical distances between ArUco markers (mm, outer corners)
 # algorithm sorts corner ids (ascending) and transforms images that lowest id is at upper-left corner. No manual image rotations necessary 
@@ -199,30 +199,55 @@ for file_in in files_in:
     if file_in.split('.')[-1] in ['jpg','JPG','png','PNG','jpeg','JPEG']:
         print(file_in)
 
-        # read image
-        image = cv2.imread(os.path.join(path_dir_in, file_in))
+        # Check if the current file is "REF.JPG"
+        if file_in == 'REF.JPG':  # You can also use file_in.lower() == 'ref.jpg' to make it case-insensitive
+            # read image
+            image = cv2.imread(os.path.join(path_dir_in, file_in))
 
-        # warp image
-        image_processed = warp_image(image, width_mm, height_mm)
+            # warp image
+            image_processed = warp_image(image, width_mm, height_mm)
 
-        # white balance image
-        image_processed = white_balance_grayworld(image_processed)
+            # white balance image
+            image_processed = white_balance_grayworld(image_processed)
 
-        # whiten aruco markers
-        image_processed = draw_white_corners(image_processed,
-                                             corner_square_length_mm=45,
-                                             width_image_mm=width_mm,
-                                             height_image_mm=height_mm)
+            # whiten aruco markers
+            image_processed = draw_white_corners(image_processed,
+                                                 corner_square_length_mm=45,
+                                                 width_image_mm=width_mm,
+                                                 height_image_mm=height_mm)
 
-        # mask background
-        image_processed = mask_background(image_processed, lower_bound=lower_bound, upper_bound=upper_bound)
+            # mask background
+            image_processed = mask_background(image_processed, lower_bound=lower_bound, upper_bound=upper_bound)
 
-        # write image
-        file_out_name, file_out_ext = file_in.split('.')
-        cv2.imwrite(f"{os.path.join(path_dir_out,file_out_name)}_processed.{file_out_ext}", image_processed)
+            # write image
+            file_out_name, file_out_ext = file_in.split('.')
+            cv2.imwrite(f"{os.path.join(path_dir_out,file_out_name)}_processed.{file_out_ext}", image_processed)
 
+            # Now we proceed with the calculations
+            mask_area_in_pixels = calculate_leaf_area_in_images(image_processed, total_area_mm2=width_mm*height_mm, 
+                              output_csv=os.path.join(path_dir_out, 'leaf_area_REF.csv'))  # Assuming there's a function that gives this
+            
+            referenz_area = 6*(3.8*5.7)  # Example reference area in cm², replace this with your actual value
+
+            # Convert mm² to cm² (1 cm² = 100 mm²)
+            mask_area_in_cm2 = total_area_mm2 / 100
+
+            # Print out the calculated areas
+
+            print(f"Mask Area (in cm²): {mask_area_in_cm2} cm²")
+            print(f"Referenz area: {referenz_area} cm²")
+
+            # Error: Referenz vs Masked area
+            error = referenz_area - mask_area_in_cm2 
+            error_percent = (error / referenz_area) * 100
+
+            print(f"Error: {error} cm²")
+            print(f"Error (%): {error_percent} %")
+
+# Process remaining files normally
 calculate_leaf_area_in_images(folder_path=path_dir_out,
                               total_area_mm2=width_mm*height_mm, 
-                              output_csv= os.path.join(path_dir_out, 'leaf_area.csv'))
+                              output_csv=os.path.join(path_dir_out, 'leaf_area.csv'))
+
 
                               
